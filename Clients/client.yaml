@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client
+  namespace: client
+spec:
+  #replicas: 1
+  selector:
+    matchLabels:
+      app: client
+  template:
+    metadata:
+      labels:
+        app: client
+    spec:
+      serviceAccountName: client
+      volumes:
+      - name: shared-data
+        emptyDir: {}
+      containers:
+        - name: client
+          image: kurosakivll/tests:client
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"  
+          imagePullPolicy: Always
+          ports:
+          - containerPort: 8081  
+          - containerPort: 6061
+          - containerPort: 4041
+          volumeMounts:
+          - name: shared-data
+            mountPath: /shared-data    
+          env:
+            - name: MQTT_BROKER_HOST
+              value: mqtt-broker-service
+            - name: MQTT_BROKER_PORT
+              value: "1883" 
+        - name: gerador
+          image: kurosakivll/tests:gerador
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"  
+        - name: collector
+          image: kurosakivll/tests:collector
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"  
+          command: ["python3","collector.py","eth0", "tcp"]
+          imagePullPolicy: Never
+          volumeMounts:
+          - name: shared-data
+            mountPath: /shared-data                       
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: client
+spec:
+  selector:
+    app: client
+  ports:
+    - name: tcp-client-8080
+      protocol: TCP
+      port: 8080
+      targetPort: 8081
+    - name: tcp-client-6060    
+      protocol: TCP
+      port: 6060 
+      targetPort: 6061
+    - name: tcp-client-5050
+      protocol: TCP
+      port: 4040
+      targetPort: 4041  
+  type: LoadBalancer
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: client
+rules:
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list"]
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: default-role-binding
+subjects:
+- namespace: default 
+  kind: ServiceAccount
+  name: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: client

@@ -1,0 +1,146 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server
+  namespace: server
+spec:
+  #replicas: 1
+  selector:
+    matchLabels:
+      app: server
+  template:
+    metadata:
+      labels:
+        app: server
+    spec:
+      serviceAccountName: server
+      containers:
+        - name: server
+          image: kurosakivll/tests:server
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+            - containerPort: 6060
+            - containerPort: 4040
+          env:
+            - name: MQTT_BROKER_HOST
+              value: mqtt-broker-service
+            - name: MQTT_BROKER_PORT
+              value: "1883"            
+
+---
+
+#Deployment broker
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: emqx-deployment
+  labels:
+    app: emqx
+spec:
+  #replicas: 1
+  selector:
+    matchLabels:
+      app: emqx
+  template:
+    metadata:
+      labels:
+        app: emqx
+    spec:
+      containers:
+      - name: emqx
+        image: emqx/emqx:latest
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+          limits:
+            memory: "128Mi"
+            cpu: "500M"  
+        ports:
+        - name: mqtt
+          containerPort: 1883
+        - name: mqttssl
+          containerPort: 8883
+        - name: mgmt
+          containerPort: 8081
+        - name: ws
+          containerPort: 8083
+        - name: wss
+          containerPort: 8084
+        - name: dashboard
+          containerPort: 18083
+
+
+---
+
+#Meu service
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: server
+  namespace: server
+  labels:
+    app: server
+    service: server
+spec:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      port: 6060
+      targetPort: 6060
+      port: 4040
+      targetPort: 4040
+  type: LoadBalancer        
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+    name: server
+
+---
+
+#Service broker
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: emqx-service
+spec:
+  selector:
+    app: emqx
+  ports:
+    - name: mqtt
+      port: 1883
+      protocol: TCP
+      targetPort: mqtt
+    - name: mqttssl
+      port: 8883
+      protocol: TCP
+      targetPort: mqttssl
+    - name: mgmt
+      port: 8081
+      protocol: TCP
+      targetPort: mgmt
+    - name: ws
+      port: 8083
+      protocol: TCP
+      targetPort: ws
+    - name: wss
+      port: 8084
+      protocol: TCP
+      targetPort: wss
+    - name: dashboard
+      port: 18083
+      protocol: TCP
+      targetPort: dashboard

@@ -1,0 +1,11 @@
+tensorflow==2.15.0
+tensorflow-privacy==0.9.0
+flwr==1.7.0
+numpy==1.26.4
+pandas==2.2.1
+nfstream==6.5.3
+scikit-learn
+kubernetes == 28.1.0
+schedule==1.2.1
+noknow==0.2.0
+paho-mqtt==2.1.0
